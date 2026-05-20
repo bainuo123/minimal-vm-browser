@@ -1,0 +1,33 @@
+# ==============================================================================
+# Minimal VM Browser - Git Ignore Configuration
+# ==============================================================================
+
+# 编译链与依赖临时解压目录
+/downloads/
+/build/
+/sysroot/
+
+# 编译过程中生成的庞大源码树（可由脚本自动拉取）
+/linux-*/
+/busybox-*/
+/qemu-*/
+/chromium-*/
+
+# 编译出来的核心组件产物
+/src/vmlinuz
+/src/initramfs.cpio.gz
+/src/qemu-system-x86_64.exe
+/src/qemu-dependencies/
+
+# 最终发布的单一可执行文件
+/bin/
+*.exe
+*.o
+*.a
+
+# 操作系统与IDE临时文件
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
