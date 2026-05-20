@@ -1,0 +1,4 @@
+const K='todoAppTasks';const q=(s)=>document.querySelector(s);let tasks=JSON.parse(localStorage.getItem(K)||'[]');
+function save(){localStorage.setItem(K,JSON.stringify(tasks));render();}
+function render(){q('#list').innerHTML='';tasks.forEach((x,i)=>{const li=document.createElement('li');const c=document.createElement('input');c.type='checkbox';c.checked=x.done;c.onchange=()=>{x.done=!x.done;save();};const s=document.createElement('span');s.textContent=x.text;if(x.done)s.style.textDecoration='line-through';const d=document.createElement('button');d.textContent='x';d.onclick=()=>{tasks.splice(i,1);save();};li.append(c,s,d);q('#list').append(li);});}
+q('#f').onsubmit=(e)=>{e.preventDefault();const t=q('#t').value.trim();if(!t)return;tasks.push({text:t,done:false,ts:Date.now()});q('#t').value='';save();};render();
