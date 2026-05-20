@@ -15,22 +15,21 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        # 1. 基础编译工具链
+        # 1. 基础编译工具链与本地检查库（确保 build_all.sh 的 check_system_deps 顺利通过）
         sudo apt-get install -y build-essential gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64 \
-          wget cpio gzip patch bc flex bison git pkg-config
+          wget cpio gzip patch bc flex bison git pkg-config libglib2.0-dev libpixman-1-dev
           
-        # 2. 核心修复：安装用于 Windows 交叉编译的 glib 和 pixman 预编译开发包
-        # Ubuntu 仓库中针对 mingw 专门维护了这些跨平台移植库
+        # 2. 交叉编译 Windows 目标所需的必备工具
         sudo apt-get install -y mingw-w64-tools
 
     - name: Run Build Pipeline
       env:
         TERM: xterm-256color
-        # 3. 核心修复：显式告诉 meson 和 configure，交叉编译时寻找 Windows 依赖的正确路径
+        # 3. 显式指定交叉编译时的包搜寻路径，防止配置阶段混淆本地库与 Windows 库
         PKG_CONFIG_PATH: /usr/x86_64-w64-mingw32/lib/pkgconfig
         PKG_CONFIG_ALLOW_CROSS: "1"
       run: |
-        # 额外建立软链接，防止某些老版本 QEMU 脚本找不到交叉 pkg-config
+        # 建立软链接，防止某些老版本 QEMU 脚本找不到交叉探测器
         sudo ln -s /usr/bin/x86_64-w64-mingw32-pkg-config /usr/bin/pkg-config-cross || true
         
         chmod +x scripts/*.sh
