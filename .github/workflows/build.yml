@@ -2,41 +2,141 @@ name: Build Minimal VM Browser
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
+    # =============================================================================
+    # Checkout
+    # =============================================================================
     - name: Checkout code
       uses: actions/checkout@v4
 
+    # =============================================================================
+    # Install Dependencies
+    # =============================================================================
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        # 1. 基础编译工具链与本地检查库（确保 build_all.sh 的 check_system_deps 顺利通过）
-        sudo apt-get install -y build-essential gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64 \
-          wget cpio gzip patch bc flex bison git pkg-config libglib2.0-dev libpixman-1-dev
-          
-        # 2. 交叉编译 Windows 目标所需的必备工具
-        sudo apt-get install -y mingw-w64-tools
 
+        # =========================================================================
+        # 基础构建工具
+        # =========================================================================
+        sudo apt-get install -y \
+          build-essential \
+          git \
+          wget \
+          curl \
+          unzip \
+          xz-utils \
+          zstd \
+          cpio \
+          gzip \
+          patch \
+          bc \
+          flex \
+          bison \
+          python3 \
+          texinfo
+
+        # =========================================================================
+        # MinGW Windows 交叉编译工具链
+        # =========================================================================
+        sudo apt-get install -y \
+          gcc-mingw-w64-x86-64 \
+          g++-mingw-w64-x86-64 \
+          binutils-mingw-w64-x86-64 \
+          mingw-w64-tools
+
+        # =========================================================================
+        # QEMU / GLib / Pixman
+        # =========================================================================
+        sudo apt-get install -y \
+          pkg-config \
+          meson \
+          ninja-build \
+          libglib2.0-dev \
+          libpixman-1-dev \
+          qemu-system-x86
+
+        # =========================================================================
+        # Linux Kernel 构建依赖
+        # =========================================================================
+        sudo apt-get install -y \
+          libelf-dev \
+          libssl-dev \
+          dwarves
+
+    # =============================================================================
+    # Build Pipeline
+    # =============================================================================
     - name: Run Build Pipeline
       env:
         TERM: xterm-256color
-        # 3. 显式指定交叉编译时的包搜寻路径，防止配置阶段混淆本地库与 Windows 库
+
+        # 允许 mingw 交叉 pkg-config
         PKG_CONFIG_PATH: /usr/x86_64-w64-mingw32/lib/pkgconfig
         PKG_CONFIG_ALLOW_CROSS: "1"
+
       run: |
-        # 建立软链接，防止某些老版本 QEMU 脚本找不到交叉探测器
-        sudo ln -s /usr/bin/x86_64-w64-mingw32-pkg-config /usr/bin/pkg-config-cross || true
-        
+        set -euxo pipefail
+
+        echo "=================================================="
+        echo "[+] Preparing Environment"
+        echo "=================================================="
+
+        # 某些旧版 QEMU configure 会查找 pkg-config-cross
+        sudo ln -sf \
+          /usr/bin/x86_64-w64-mingw32-pkg-config \
+          /usr/bin/pkg-config-cross || true
+
         chmod +x scripts/*.sh
+
+        echo "=================================================="
+        echo "[+] Build Kernel"
+        echo "=================================================="
+
+        ./scripts/build_kernel.sh
+
+        echo "=================================================="
+        echo "[+] Verify Kernel"
+        echo "=================================================="
+
+        find . -name "vmlinuz" || true
+        ls -lh src/ || true
+
+        echo "=================================================="
+        echo "[+] Build Initramfs"
+        echo "=================================================="
+
+        ./scripts/build_initramfs.sh
+
+        echo "=================================================="
+        echo "[+] Build QEMU"
+        echo "=================================================="
+
+        ./scripts/build_qemu.sh
+
+        echo "=================================================="
+        echo "[+] Final Build"
+        echo "=================================================="
+
         make all
 
+    # =============================================================================
+    # Upload EXE Artifact
+    # =============================================================================
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
+
       with:
         name: minimal-vm-browser-exe
-        path: bin/minimal_browser_vm.exe
+        path: |
+          bin/minimal_browser_vm.exe
+          src/vmlinuz
