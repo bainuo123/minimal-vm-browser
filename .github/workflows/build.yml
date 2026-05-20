@@ -18,6 +18,8 @@ jobs:
         sudo apt-get install -y build-essential gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64 wget cpio gzip patch bc flex bison git
 
     - name: Run Build Pipeline
+      env:
+        TERM: xterm-256color  # 核心修复：注入虚拟终端环境变量，防止 clear 命令报错
       run: |
         chmod +x scripts/*.sh
         make all
